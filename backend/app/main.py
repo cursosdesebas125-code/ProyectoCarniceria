@@ -6,14 +6,18 @@ import os
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
+# ✨ Cargamos las variables de entorno desde el archivo .env
+load_dotenv()
 
-# 1. HARDCODEAMOS LAS CREDENCIALES REALES AQUÍ (Prueba de fuerza definitiva)
-# Reemplaza estos dos strings con los datos exactos que copiaste del panel de Supabase
-SUPABASE_URL = "https://ztzjiludrqlbcgqkpgfy.supabase.co"
-SUPABASE_KEY = "sb_publishable_DjwMm0MRiMujurnwR961DA_x5BmTYa2"
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+# Validación opcional para asegurarte de que las variables existan
+if not SUPABASE_URL or not SUPABASE_KEY:
+    raise RuntimeError("❌ Faltan las variables de entorno de Supabase en el archivo .env")
 
 print("==========================================")
-print(f"--> CONECTANDO DIRECTAMENTE A: {SUPABASE_URL}")
+print(f"--> CONECTANDO A SUPABASE DESDE .ENV")
 print("==========================================")
 
 # Conectar con Supabase
@@ -24,6 +28,7 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/docs"
 )
+
 
 # 2. CONFIGURACIÓN DE CORS REFORZADA
 app.add_middleware(

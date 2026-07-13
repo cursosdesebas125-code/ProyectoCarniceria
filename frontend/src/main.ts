@@ -15,6 +15,7 @@ class AppController {
 
   // Window 2 State (POS Catalog cache)
   private posAvailableProducts: Producto[] = [];
+  private posSelectedClientData: Cliente | null = null;
 
   // DOM Elements - Global
   private viewWindow1 = document.getElementById('view-window1')!;
@@ -123,6 +124,28 @@ class AppController {
     // Window 2: Dynamic Row insertion
     this.posBtnAddRow.addEventListener('click', () => this.addPOSRow());
     this.posBtnSaveOrder.addEventListener('click', () => this.handlePOSSubmitOrder());
+
+    this.posSelectCliente.addEventListener('change', async () => {
+      const clientId = parseInt(this.posSelectCliente.value);
+      if (!clientId) {
+        this.posSelectedClientData = null;
+        this.recalculatePOSTotals();
+        return;
+      }
+
+      try {
+        const clientRes = await api.clientes.list(1, 1000);
+        const clienteFrescesco = clientRes.items.find(c => c.id === clientId);
+        if (clienteFrescesco) {
+          console.log(`--> [POS FRESCO] Datos actualizados para: ${clienteFrescesco.NameCliente}, Deuda: $${clienteFrescesco.Deuda_del_cliente}`);
+          this.posSelectedClientData = clienteFrescesco;
+        }
+      } catch (err) {
+        console.error('Error al actualizar los datos del cliente en el POS:', err);
+      }
+
+      this.recalculatePOSTotals();
+    });
 
     // Window 3: Inner switcher
     this.reportsTabInquiry.addEventListener('click', () => {
@@ -502,6 +525,8 @@ class AppController {
   // ==========================================
   // WINDOW 2: POS SELECTORS & DYNAMIC ROWS
   // ==========================================
+
+  
   private async loadPOSSelectorsData(): Promise<void> {
     this.posSelectCliente.innerHTML = '<option value="">Cargando clientes activos...</option>';
     this.posRowsContainer.innerHTML = '';
@@ -617,7 +642,7 @@ class AppController {
     this.posBtnSaveOrder.disabled = !(clientSelected && hasItems && allValid);
   }
 
-  private async handlePOSSubmitOrder(): Promise<void> {
+ private async handlePOSSubmitOrder(): Promise<void> {
     const clientId = parseInt(this.posSelectCliente.value);
     if (!clientId) {
       Swal.fire({
@@ -627,6 +652,30 @@ class AppController {
         confirmButtonColor: '#ffa000'
       });
       return;
+    }
+
+    try {
+      const clienteActual = this.posSelectedClientData;
+      console.log("CLIENTE SELECCIONADO (Fresco):", clienteActual);
+
+      if (clienteActual && Number(clienteActual.Estado) === 1 && Number(clienteActual.Deuda_del_cliente) > 0) {
+        const confirmacionDeuda = await Swal.fire({
+          title: '¡Atención: El cliente debe!',
+          text: `Este cliente tiene un saldo pendiente de $${clienteActual.Deuda_del_cliente}. ¿Estás seguro de que quieres crear el pedido?`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#2e7d32',
+          cancelButtonColor: '#757575',
+          confirmButtonText: 'Sí, crear pedido',
+          cancelButtonText: 'Cancelar'
+        });
+
+        if (!confirmacionDeuda.isConfirmed) {
+          return; 
+        }
+      }
+    } catch (err) {
+      console.error('Error al verificar el estado del cliente:', err);
     }
 
     const rows = this.posRowsContainer.querySelectorAll('.pos-row-item');
@@ -689,6 +738,7 @@ class AppController {
     };
 
     try {
+      // 🚀 AQUÍ ESTÁ EL ENVÍO REAL USANDO TUS PROPIOS MÉTODOS DEL PROYECTO
       await api.pedidos.create(payload);
       
       Swal.fire({
