@@ -108,36 +108,96 @@ def crear_cliente(payload: ClienteCreate):
 @app.post("/clientes/{cliente_id}/abonar")
 def abonar_deuda(cliente_id: int, payload: AbonoPayload):
     try:
+        print(f"--> [ABONO] Procesando abono para el cliente ID: {cliente_id}")
+        monto_abono = float(payload.monto)
+        if monto_abono <= 0:
+            raise HTTPException(status_code=400, detail="El monto del abono debe ser mayor a cero.")
+        
         # 1. Buscar el cliente actual forzando el esquema público
-        res_cliente = supabase.schema("public").table("clientes").select("Deuda_del_cliente").eq("id", cliente_id).execute()
+        res_cliente = supabase.schema("public").table("clientes").select("Deuda_del_cliente").eq("id", int(cliente_id)).execute()
         if not res_cliente.data:
-            raise HTTPException(status_code=404, detail="Cliente no encontrado")
+            raise HTTPException(status_code=404, detail="Cliente no encontrado.")
             
-        deuda_actual = float(res_cliente.data[0]["Deuda_del_cliente"] or 0)
-        nueva_deuda = max(0.0, deuda_actual - payload.monto)  # Evita que baje de 0
+        deuda_actual = float(res_cliente.data[0]["Deuda_del_cliente"] or 0.0)
         
-        # 2. Actualizar la nueva deuda en Supabase
-        supabase.schema("public").table("clientes").update({"Deuda_del_cliente": nueva_deuda}).eq("id", cliente_id).execute()
-        print(f"--> Abono procesado. Cliente {cliente_id}: Deuda {deuda_actual} -> {nueva_deuda}")
+        # Validation step: The payment amount cannot exceed the customer's total debt
+        if monto_abono > deuda_actual:
+            raise HTTPException(
+                status_code=400, 
+                detail="The payment amount cannot exceed the customer's total debt"
+            )
+            
+        # 2. Get customer's pending orders (EstadoPedido is not 'pagado' or 'Pagado')
+        res_pedidos = supabase.schema("public").table("Pedidos").select("*").eq("IDcliente", int(cliente_id)).execute()
         
-        return {"status": "ok", "nueva_deuda": nueva_deuda}
+        pending_orders = []
+        if res_pedidos.data:
+            for p in res_pedidos.data:
+                estado = (p.get("EstadoPedido") or "").lower()
+                if estado != "pagado":
+                    pending_orders.append(p)
+                    
+        # Sort pending orders by Fecha_pedido ascending, then by ID ascending
+        pending_orders.sort(key=lambda x: (x.get("Fecha_pedido") or "", x.get("id") or 0))
+        
+        monto_restante = monto_abono
+        
+        # 3. Distribute payment among pending orders
+        for order in pending_orders:
+            if monto_restante <= 0:
+                break
+                
+            order_id = order.get("id")
+            estado_actual = order.get("EstadoPedido") or ""
+            
+            # Fetch order details to sum the total value of the order
+            res_details = supabase.schema("public").table("Detalles_Pedido").select("Valor_del_Pedido").eq("id_pedido", order_id).execute()
+            order_total = 0.0
+            if res_details.data:
+                order_total = sum(float(d.get("Valor_del_Pedido") or 0.0) for d in res_details.data)
+                
+            # Parse already paid amount if the status reflects a partial balance, e.g., "Abonado 40.0"
+            already_paid = 0.0
+            if estado_actual.lower().startswith("abonado "):
+                try:
+                    already_paid = float(estado_actual.split(" ")[1])
+                except Exception:
+                    already_paid = 0.0
+                    
+            remaining_to_pay = max(0.0, order_total - already_paid)
+            if remaining_to_pay <= 0:
+                continue
+                
+            if monto_restante >= remaining_to_pay:
+                # Fully paid
+                monto_restante -= remaining_to_pay
+                supabase.schema("public").table("Pedidos").update({"EstadoPedido": "pagado"}).eq("id", order_id).execute()
+                print(f"--> Pedido #{order_id} pagado completamente.")
+            else:
+                # Partially paid
+                new_already_paid = already_paid + monto_restante
+                supabase.schema("public").table("Pedidos").update({"EstadoPedido": f"Abonado {new_already_paid:.2f}"}).eq("id", order_id).execute()
+                print(f"--> Pedido #{order_id} abonado con ${monto_restante}. Total abonado: ${new_already_paid:.2f}")
+                monto_restante = 0.0
+                break
+                
+        # 4. Update the new debt in table 'clientes'
+        nueva_deuda = max(0.0, deuda_actual - monto_abono)
+        supabase.schema("public").table("clientes").update({"Deuda_del_cliente": nueva_deuda}).eq("id", int(cliente_id)).execute()
+        print(f"--> [ÉXITO] Abono de ${monto_abono} aplicado. Nueva deuda para cliente {cliente_id}: ${nueva_deuda}")
+        
+        return {
+            "status": "success",
+            "mensaje": f"Abono de ${monto_abono} procesado.",
+            "nueva_deuda": nueva_deuda
+        }
+        
+    except HTTPException as he:
+        raise he
     except Exception as e:
-        print("❌ ERROR REAL AL ABONAR:")
+        print("❌ ERROR CRÍTICO AL ABONAR:")
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=400, detail=str(e))
-    try:
-        res_cliente = supabase.schema("public").table("clientes").select("Deuda_del_cliente").eq("id", cliente_id).execute()
-        if not res_cliente.data:
-            raise HTTPException(status_code=404, detail="Cliente no encontrado")
-            
-        deuda_actual = float(res_cliente.data[0]["Deuda_del_cliente"] or 0)
-        nueva_deuda = max(0.0, deuda_actual - payload.amount)
-        
-        supabase.schema("public").table("clientes").update({"Deuda_del_cliente": nueva_deuda}).eq("id", cliente_id).execute()
-        print(f"--> Abono procesado. Cliente {cliente_id}: Deuda {deuda_actual} -> {nueva_deuda}")
-        return {"status": "ok", "nueva_deuda": nueva_deuda}
-    except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
@@ -267,40 +327,6 @@ def obtener_pedidos():
     try:
         return supabase.schema("public").table("Pedidos").select("*").execute().data
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    
-@app.post("/api/v1/clientes/{cliente_id}/abonar")
-def abonar_a_deuda(cliente_id: int, datos: AbonoPayload):
-    try:
-        print(f"--> [ABONO] Procesando abono para el cliente ID: {cliente_id}")
-        monto_abono = float(datos.monto)
-        
-        # 1. Traer la deuda actual (Forzamos int(cliente_id) para que Supabase no bote error 400)
-        res_cliente = supabase.schema("public").table("clientes").select("Deuda_del_cliente").eq("id", int(cliente_id)).single().execute()
-        
-        if not res_cliente.data:
-            raise HTTPException(status_code=404, detail="Cliente no encontrado.")
-            
-        deuda_actual = float(res_cliente.data.get("Deuda_del_cliente") or 0.0)
-        
-        # 2. Calcular la resta (Si el abono es mayor o igual, la deuda queda en 0)
-        nueva_deuda = max(0.0, deuda_actual - monto_abono)
-        
-        # 3. Actualizar en Supabase (También forzamos int(cliente_id) aquí)
-        supabase.schema("public").table("clientes").update({"Deuda_del_cliente": nueva_deuda}).eq("id", int(cliente_id)).execute()
-        
-        print(f"--> [ÉXITO] Abono de ${monto_abono} aplicado. Nueva deuda: ${nueva_deuda}")
-        
-        return {
-            "status": "success", 
-            "mensaje": f"Abono de ${monto_abono} procesado.", 
-            "nueva_deuda": nueva_deuda
-        }
-        
-    except Exception as e:
-        print("❌ ERROR EN EL CIRCUITO DE SUPABASE:")
-        import traceback
-        traceback.print_exc()  # Esto te dirá exactamente el texto del error en la terminal de Ubuntu
         raise HTTPException(status_code=400, detail=str(e))
     
 # ================= ROUTE SALVAVIDAS: Reportes Financieros =================

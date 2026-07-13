@@ -16,6 +16,7 @@ class AppController {
   // Window 2 State (POS Catalog cache)
   private posAvailableProducts: Producto[] = [];
   private posSelectedClientData: Cliente | null = null;
+  private posIsSubmitting = false;
 
   // DOM Elements - Global
   private viewWindow1 = document.getElementById('view-window1')!;
@@ -642,102 +643,109 @@ class AppController {
     this.posBtnSaveOrder.disabled = !(clientSelected && hasItems && allValid);
   }
 
- private async handlePOSSubmitOrder(): Promise<void> {
-    const clientId = parseInt(this.posSelectCliente.value);
-    if (!clientId) {
-      Swal.fire({
-        title: 'Falta Cliente',
-        text: 'Por favor, seleccione el cliente destinatario.',
-        icon: 'warning',
-        confirmButtonColor: '#ffa000'
-      });
-      return;
-    }
+  private async handlePOSSubmitOrder(): Promise<void> {
+    if (this.posIsSubmitting) return;
+
+    this.posIsSubmitting = true;
+    this.posBtnSaveOrder.disabled = true;
+    const originalButtonText = this.posBtnSaveOrder.innerText;
+    this.posBtnSaveOrder.innerText = 'Procesando...';
 
     try {
-      const clienteActual = this.posSelectedClientData;
-      console.log("CLIENTE SELECCIONADO (Fresco):", clienteActual);
-
-      if (clienteActual && Number(clienteActual.Estado) === 1 && Number(clienteActual.Deuda_del_cliente) > 0) {
-        const confirmacionDeuda = await Swal.fire({
-          title: '¡Atención: El cliente debe!',
-          text: `Este cliente tiene un saldo pendiente de $${clienteActual.Deuda_del_cliente}. ¿Estás seguro de que quieres crear el pedido?`,
+      const clientId = parseInt(this.posSelectCliente.value);
+      if (!clientId) {
+        Swal.fire({
+          title: 'Falta Cliente',
+          text: 'Por favor, seleccione el cliente destinatario.',
           icon: 'warning',
-          showCancelButton: true,
-          confirmButtonColor: '#2e7d32',
-          cancelButtonColor: '#757575',
-          confirmButtonText: 'Sí, crear pedido',
-          cancelButtonText: 'Cancelar'
+          confirmButtonColor: '#ffa000'
         });
+        return;
+      }
 
-        if (!confirmacionDeuda.isConfirmed) {
-          return; 
+      try {
+        const clienteActual = this.posSelectedClientData;
+        console.log("CLIENTE SELECCIONADO (Fresco):", clienteActual);
+
+        if (clienteActual && Number(clienteActual.Estado) === 1 && Number(clienteActual.Deuda_del_cliente) > 0) {
+          const confirmacionDeuda = await Swal.fire({
+            title: '¡Atención: El cliente debe!',
+            text: `Este cliente tiene un saldo pendiente de $${clienteActual.Deuda_del_cliente}. ¿Estás seguro de que quieres crear el pedido?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#2e7d32',
+            cancelButtonColor: '#757575',
+            confirmButtonText: 'Sí, crear pedido',
+            cancelButtonText: 'Cancelar'
+          });
+
+          if (!confirmacionDeuda.isConfirmed) {
+            return; 
+          }
         }
-      }
-    } catch (err) {
-      console.error('Error al verificar el estado del cliente:', err);
-    }
-
-    const rows = this.posRowsContainer.querySelectorAll('.pos-row-item');
-    if (rows.length === 0) {
-      Swal.fire({
-        title: 'Carrito Vacío',
-        text: 'El pedido debe contener al menos un producto.',
-        icon: 'warning',
-        confirmButtonColor: '#ffa000'
-      });
-      return;
-    }
-
-    const items: { id_producto: number; cantidad_producto: number; Valor_del_Pedido: number }[] = [];
-    const seenProductIds = new Set<number>();
-    let validationError = '';
-
-    rows.forEach((row, index) => {
-      const selectEl = row.querySelector('.pos-row-select-prod') as HTMLSelectElement;
-      const qtyInput = row.querySelector('.pos-row-qty') as HTMLInputElement;
-
-      const prodId = parseInt(selectEl.value);
-      const qty = parseFloat(qtyInput.value) || 0;
-
-      if (!prodId) {
-        validationError = `Fila #${index + 1}: Seleccione un producto.`;
-      }
-      if (qty <= 0) {
-        validationError = `Fila #${index + 1}: Ingrese una cantidad mayor a cero.`;
+      } catch (err) {
+        console.error('Error al verificar el estado del cliente:', err);
       }
 
-      if (seenProductIds.has(prodId)) {
-        validationError = `El producto de la fila #${index + 1} ya está registrado en este pedido. Agregue la cantidad en una sola fila.`;
-      }
-      seenProductIds.add(prodId);
-
-      const product = this.posAvailableProducts.find(p => p.id === prodId);
-      if (product) {
-        items.push({
-          id_producto: prodId,
-          cantidad_producto: qty,
-          Valor_del_Pedido: qty * Number(product.ValorDeVenta)
+      const rows = this.posRowsContainer.querySelectorAll('.pos-row-item');
+      if (rows.length === 0) {
+        Swal.fire({
+          title: 'Carrito Vacío',
+          text: 'El pedido debe contener al menos un producto.',
+          icon: 'warning',
+          confirmButtonColor: '#ffa000'
         });
+        return;
       }
-    });
 
-    if (validationError) {
-      Swal.fire({
-        title: 'Corrección de Pedido',
-        text: validationError,
-        icon: 'warning',
-        confirmButtonColor: '#ffa000'
+      const items: { id_producto: number; cantidad_producto: number; Valor_del_Pedido: number }[] = [];
+      const seenProductIds = new Set<number>();
+      let validationError = '';
+
+      rows.forEach((row, index) => {
+        const selectEl = row.querySelector('.pos-row-select-prod') as HTMLSelectElement;
+        const qtyInput = row.querySelector('.pos-row-qty') as HTMLInputElement;
+
+        const prodId = parseInt(selectEl.value);
+        const qty = parseFloat(qtyInput.value) || 0;
+
+        if (!prodId) {
+          validationError = `Fila #${index + 1}: Seleccione un producto.`;
+        }
+        if (qty <= 0) {
+          validationError = `Fila #${index + 1}: Ingrese una cantidad mayor a cero.`;
+        }
+
+        if (seenProductIds.has(prodId)) {
+          validationError = `El producto de la fila #${index + 1} ya está registrado en este pedido. Agregue la cantidad en una sola fila.`;
+        }
+        seenProductIds.add(prodId);
+
+        const product = this.posAvailableProducts.find(p => p.id === prodId);
+        if (product) {
+          items.push({
+            id_producto: prodId,
+            cantidad_producto: qty,
+            Valor_del_Pedido: qty * Number(product.ValorDeVenta)
+          });
+        }
       });
-      return;
-    }
 
-    const payload: OrderCreateRequest = {
-      IDcliente: clientId,
-      items: items
-    };
+      if (validationError) {
+        Swal.fire({
+          title: 'Corrección de Pedido',
+          text: validationError,
+          icon: 'warning',
+          confirmButtonColor: '#ffa000'
+        });
+        return;
+      }
 
-    try {
+      const payload: OrderCreateRequest = {
+        IDcliente: clientId,
+        items: items
+      };
+
       // 🚀 AQUÍ ESTÁ EL ENVÍO REAL USANDO TUS PROPIOS MÉTODOS DEL PROYECTO
       await api.pedidos.create(payload);
       
@@ -758,6 +766,10 @@ class AppController {
         icon: 'error',
         confirmButtonColor: '#c62828'
       });
+    } finally {
+      this.posIsSubmitting = false;
+      this.posBtnSaveOrder.innerText = originalButtonText;
+      this.recalculatePOSTotals();
     }
   }
 
@@ -943,18 +955,22 @@ document.addEventListener('DOMContentLoaded', () => {
     // 💸 Usamos SweetAlert2 para pedir el monto en una interfaz premium
     const { value: valorIngresado } = await Swal.fire({
       title: `Abonar a ${nombreCliente}`,
-      html: `Deuda actual: <strong>$${deudaActual}</strong><br><br>Ingrese el monto que va a abonar:`,
+      html: `Deuda actual: <strong>$${Number(deudaActual).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong><br><br>Ingrese el monto que va a abonar:`,
       input: 'number',
-      inputPlaceholder: `Ej: ${deudaActual}`,
+      inputPlaceholder: `Máximo: $${deudaActual}`,
       inputValue: '',
       showCancelButton: true,
-      confirmButtonColor: '#2e7d32', // Verde
-      cancelButtonColor: '#757575',  // Gris
+      confirmButtonColor: '#2e7d32',
+      cancelButtonColor: '#757575',
       confirmButtonText: 'Procesar Abono',
       cancelButtonText: 'Cancelar',
       inputValidator: (value: string) => {
-        if (!value || isNaN(parseFloat(value)) || parseFloat(value) <= 0) {
+        const parsed = parseFloat(value);
+        if (!value || isNaN(parsed) || parsed <= 0) {
           return '¡Debes ingresar un monto válido y mayor a cero!';
+        }
+        if (parsed > deudaActual) {
+          return `El monto no puede superar la deuda actual ($${deudaActual}).`;
         }
       }
     });
@@ -977,7 +993,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // ✨ VENTANA DE ÉXITO PREMIUM
         Swal.fire({
           title: '¡Abono Registrado!',
-          text: `Nueva deuda de ${nombreCliente}: $${resultado.nueva_deuda}`,
+          text: `Nueva deuda de ${nombreCliente}: $${Number(resultado.nueva_deuda).toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
           icon: 'success',
           confirmButtonColor: '#2e7d32',
           confirmButtonText: 'Excelente'
@@ -987,10 +1003,15 @@ document.addEventListener('DOMContentLoaded', () => {
           await appControllerInstance.renderW1Table();
         }
       } else {
-        // ⚠️ ALERTA DE ERROR INTERNO
+        // ⚠️ Mostrar el mensaje de error real devuelto por el servidor
+        let errorMsg = 'No se pudo aplicar el abono.';
+        try {
+          const errBody = await response.json();
+          if (errBody?.detail) errorMsg = errBody.detail;
+        } catch (_) {}
         Swal.fire({
           title: 'Error al procesar',
-          text: 'El servidor recibió los datos pero no pudo aplicar el abono.',
+          text: errorMsg,
           icon: 'warning',
           confirmButtonColor: '#dd2c00',
           confirmButtonText: 'Revisar'

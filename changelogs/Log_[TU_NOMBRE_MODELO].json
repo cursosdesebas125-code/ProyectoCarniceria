@@ -1,0 +1,8 @@
+{
+  "fecha": "YYYY-MM-DD",
+  "modelo": "Nombre del Modelo",
+  "cambio": "Descripción breve del cambio realizado",
+  "resultado_prueba": "PASSED / FAILED",
+  "intentos_realizados": "x",
+  "notas": "Breve explicación del resultado de tu prueba"
+}
