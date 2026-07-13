@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carnicería Mayorista & Distribución | Panel de Control</title>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <meta name="description" content="Sistema de gestión de ventas y cobranza a plazos (término de 15 días) para distribución mayorista de carne.">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <!-- Premium Header -->
+  <header>
+    <div class="logo-container">
+      <div class="logo-icon">C</div>
+      <div class="logo-text">
+        <h1 style="font-weight: 800; font-size: 1.35rem; margin: 0; color: var(--text-primary);">
+          Distribuidora de Carnes del Norte <span style="color: var(--accent-meat);">- Control de Plazos</span>
+        </h1>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Dashboard Container -->
+  <main class="container">
+    
+    <!-- Tab Switcher -->
+    <div class="tabs-container">
+      <button class="tab-btn active" id="tab-btn-overview">Administrar Clientes / Productos</button>
+      <button class="tab-btn" id="tab-btn-pos">Crear Pedido (POS)</button>
+      <button class="tab-btn" id="tab-btn-reports">Consultas & Informes</button>
+    </div>
+
+    <!-- Window 1 Dashboard Layout (Clientes y Productos) -->
+    <div id="view-window1" class="fade-in" style="display: grid; grid-template-columns: 1fr; gap: 20px;">
+      
+      <!-- Inner Tab Switcher for Window 1 -->
+      <div class="tabs-container" style="margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+        <button class="tab-btn active" id="w1-tab-btn-client">Registro de Clientes</button>
+        <button class="tab-btn" id="w1-tab-btn-product">Registro de Productos</button>
+        <button class="tab-btn" id="w1-tab-btn-table">Administración de Clientes & Saldos</button>
+      </div>
+
+      <!-- Sub-view 1: Registro de Clientes -->
+      <div id="w1-panel-client" class="panel fade-in">
+        <div class="panel-header">
+          <h2 class="panel-title"><span style="background-color: var(--accent-success);"></span>Registro de Clientes</h2>
+        </div>
+        <form id="form-cliente-window1" style="max-width: 500px;">
+          <div class="form-group">
+            <label for="w1-client-name">Nombre del Cliente / Razón Social</label>
+            <input type="text" id="w1-client-name" class="form-control" placeholder="Ej. Distribuidora Gomez" required>
+          </div>
+          <button type="submit" class="btn" id="w1-btn-submit-cliente">Registrar Cliente</button>
+        </form>
+      </div>
+
+      <!-- Sub-view 2: Registro de Productos -->
+      <div id="w1-panel-product" class="panel fade-in" style="display: none;">
+        <div class="panel-header">
+          <h2 class="panel-title"><span style="background-color: var(--accent-meat);"></span>Registro de Productos</h2>
+        </div>
+        <form id="form-producto-window1" style="max-width: 500px;">
+          <div class="form-group">
+            <label for="w1-product-name">Nombre del Corte / Producto</label>
+            <input type="text" id="w1-product-name" class="form-control" placeholder="Ej. Lomo Veto Vacuno" required>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="w1-product-cost">Precio Compra ($/kg)</label>
+              <input type="number" id="w1-product-cost" class="form-control" min="0" step="0.01" placeholder="0.00" required>
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="w1-product-sale">Precio Venta ($/kg)</label>
+              <input type="number" id="w1-product-sale" class="form-control" min="0" step="0.01" placeholder="0.00" required>
+            </div>
+          </div>
+          <button type="submit" class="btn" id="w1-btn-submit-producto">Registrar Producto</button>
+        </form>
+
+        <div class="panel-header" style="margin-top: 40px; border-top: 1px solid var(--border-color); padding-top: 25px;">
+          <h2 class="panel-title"><span style="background-color: var(--accent-meat);"></span>Catálogo de Productos</h2>
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>Precio Compra ($/kg)</th>
+                <th>Precio Venta ($/kg)</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="w1-product-table-body">
+              <tr>
+                <td colspan="4" style="text-align: center; color: var(--text-muted);">Cargando catálogo de productos...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Sub-view 3: Administración de Clientes & Saldos -->
+      <div id="w1-panel-table" class="panel fade-in" style="display: none;">
+        <div class="panel-header">
+          <h2 class="panel-title"><span style="background-color: var(--accent-gold);"></span>Administración de Clientes & Saldos</h2>
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>Deuda Pendiente</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="w1-table-body">
+              <tr>
+                <td colspan="4" style="text-align: center; color: var(--text-muted);">Cargando directorio de clientes...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination Controls -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 25px; border-top: 1px solid var(--border-color); padding-top: 20px;">
+          <button class="btn btn-secondary" id="w1-btn-prev" disabled>&larr; Anterior</button>
+          <span id="w1-page-info" style="font-weight: 600; font-size: 0.9rem; color: var(--text-secondary);">Página 1 de 1</span>
+          <button class="btn btn-secondary" id="w1-btn-next" disabled>Siguiente &rarr;</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Window 2 Dashboard Layout (Crear Pedido POS) -->
+    <div id="view-window2" class="dashboard-layout fade-in" style="display: none;">
+      
+      <!-- Sub-view A: Invoice Client Selector -->
+      <section class="forms-container" style="display: flex; flex-direction: column; gap: 25px;">
+        <div class="panel">
+          <div class="panel-header">
+            <h2 class="panel-title"><span style="background-color: var(--accent-success);"></span>Cliente Facturación</h2>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="pos-select-cliente">Seleccionar Cliente</label>
+            <select id="pos-select-cliente" class="form-control" required>
+              <option value="">Cargando clientes activos...</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- Sub-view B: Dynamic Invoice Sheet -->
+      <section class="panel" style="display: flex; flex-direction: column; justify-content: space-between; min-height: 400px;">
+        <div>
+          <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; margin-bottom: 20px;">
+            <h2 class="panel-title"><span style="background-color: var(--accent-meat);"></span>Detalles de Venta (POS)</h2>
+            <!-- Green '+' button to add row dynamically -->
+            <button type="button" class="btn btn-success" id="pos-btn-add-row" style="padding: 8px 16px; font-size: 0.85rem;">
+              + Añadir Producto
+            </button>
+          </div>
+
+          <!-- Dynamic rows container -->
+          <div id="pos-rows-container" class="pos-items-list">
+            <!-- Dynamic input rows will be generated via TypeScript -->
+          </div>
+        </div>
+
+        <!-- Order Summary & Submission -->
+        <div style="margin-top: 25px; border-top: 2px solid var(--bg-primary); padding-top: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <span style="font-weight: 700; color: var(--text-secondary); font-size: 0.85rem; letter-spacing: 0.5px;">VALOR TOTAL DEL PEDIDO:</span>
+            <span id="pos-total-value" style="font-size: 2.25rem; font-weight: 800; color: var(--accent-meat);">$0.00</span>
+          </div>
+          
+          <button class="btn" id="pos-btn-save-order" style="width: 100%; justify-content: center; padding: 14px;" disabled>
+            Confirmar y Guardar Pedido
+          </button>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- Window 3 Dashboard Layout (Consultas & Informes) -->
+    <div id="view-window3" class="fade-in" style="display: none;">
+      
+      <!-- Inner Tab Switcher -->
+      <div class="tabs-container" style="margin-bottom: 25px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px;">
+        <button class="tab-btn active" id="reports-tab-inquiry">Consulta de Cliente</button>
+        <button class="tab-btn" id="reports-tab-global">Métricas Globales y Utilidades</button>
+      </div>
+
+      <!-- Tab Content 1: Customer Account Statement -->
+      <div id="reports-content-inquiry" class="dashboard-layout" style="grid-template-columns: 1fr;">
+        <div class="panel">
+          <div class="panel-header">
+            <h2 class="panel-title"><span style="background-color: var(--accent-success);"></span>Estado de Cuenta (Cobranza a 15 días)</h2>
+          </div>
+          
+          <div class="form-group" style="max-width: 400px; margin-bottom: 25px;">
+            <label for="reports-select-cliente">Seleccionar Cliente</label>
+            <select id="reports-select-cliente" class="form-control">
+              <option value="">Cargando clientes...</option>
+            </select>
+          </div>
+
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Pedido ID</th>
+                  <th>Fecha de Registro</th>
+                  <th>Total Facturado</th>
+                  <th>Días Transcurridos</th>
+                  <th>Estado Pedido</th>
+                  <th>Vencimiento (15d)</th>
+                </tr>
+              </thead>
+              <tbody id="reports-statement-body">
+                <tr>
+                  <td colspan="6" style="text-align: center; color: var(--text-muted);">Seleccione un cliente del listado superior.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content 2: Global Metrics -->
+      <div id="reports-content-global" class="dashboard-layout" style="display: none; grid-template-columns: 2fr 1fr; gap: 30px;">
+        
+        <!-- Column 1: Summary Cards & Utility Filter -->
+        <div style="display: flex; flex-direction: column; gap: 25px;">
+          
+          <!-- Aggregates Grid -->
+          <div class="metrics-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 0;">
+            <div class="metric-card debt" style="padding: 20px;">
+              <div class="metric-label" style="font-size: 0.75rem;">Cartera Pendiente</div>
+              <div class="metric-value" id="rep-outstanding" style="font-size: 1.6rem; margin: 5px 0;">$0.00</div>
+              <div class="metric-subtext">Deuda total activa</div>
+            </div>
+            <div class="metric-card orders" style="padding: 20px;">
+              <div class="metric-label" style="font-size: 0.75rem;">Balances en Mora</div>
+              <div class="metric-value" id="rep-overdue" style="font-size: 1.6rem; margin: 5px 0; color: var(--accent-meat);">$0.00</div>
+              <div class="metric-subtext">Ventas vencidas (>15d)</div>
+            </div>
+            <div class="metric-card clients" style="padding: 20px;">
+              <div class="metric-label" style="font-size: 0.75rem;">Total Cobrado</div>
+              <div class="metric-value" id="rep-collected" style="font-size: 1.6rem; margin: 5px 0; color: var(--accent-success);">$0.00</div>
+              <div class="metric-subtext">Pedidos pagados</div>
+            </div>
+          </div>
+
+          <!-- Utility Earnings Filter -->
+          <div class="panel">
+            <div class="panel-header">
+              <h2 class="panel-title"><span style="background-color: var(--accent-success);"></span>Cálculo de Margen de Utilidades</h2>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+              <div class="form-group">
+                <label for="earnings-start-date">Fecha Inicial</label>
+                <input type="date" id="earnings-start-date" class="form-control">
+              </div>
+              <div class="form-group">
+                <label for="earnings-end-date">Fecha Final</label>
+                <input type="date" id="earnings-end-date" class="form-control">
+              </div>
+            </div>
+
+            <button type="button" class="btn" id="btn-calculate-earnings" style="width: 100%; justify-content: center;">
+              Calcular Utilidad Neta
+            </button>
+          </div>
+
+        </div>
+
+        <!-- Column 2: Net Profit display -->
+        <div class="panel" style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; border-color: var(--accent-gold);">
+          <div class="logo-icon" style="background: linear-gradient(135deg, var(--accent-gold), var(--accent-success)); width: 50px; height: 50px; border-radius: 50%; font-size: 1.5rem; margin-bottom: 15px; color: var(--bg-primary); font-weight: 800;">$</div>
+          <h3 style="color: var(--text-secondary); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Utilidad del Periodo</h3>
+          <h2 id="earnings-result-value" style="font-size: 2.25rem; font-weight: 800; color: var(--accent-success); letter-spacing: -1px; margin-bottom: 5px;">$0.00</h2>
+          <p id="earnings-result-details" style="font-size: 0.75rem; color: var(--text-muted); max-width: 220px; line-height: 1.4;">Seleccione un rango de fechas para calcular la ganancia neta.</p>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Vite TypeScript Entrypoint -->
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
+
