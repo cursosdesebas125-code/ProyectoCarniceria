@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Sistema de Distribución de Carne a Plazos
 
 Este proyecto implementa una plataforma full-stack modular para la gestión comercial y financiera de una empresa de distribución de carne al por mayor. El sistema destaca por su modelo de venta basado en créditos a plazos, facilitando el control de saldos y cuentas por cobrar bajo términos rigurosos de vencimiento.
@@ -161,3 +162,7 @@ Siga los siguientes pasos para configurar y ejecutar el entorno de desarrollo lo
    ```text
    http://localhost:5173
    ```
+=======
+# ProyectoCarniceria
+Sistema web Full-Stack (FastAPI, TypeScript, Supabase) para la distribución cárnica mayorista. Automatiza las ventas mediante un POS dinámico en tiempo real, gestiona el pesado exacto en kilos y controla las cuentas por cobrar con plazos de 15 días. Permite registrar abonos y genera reportes de rentabilidad neta.
+>>>>>>> 848a631264754f9e2887208a2bf8060a1b6cb3c7
