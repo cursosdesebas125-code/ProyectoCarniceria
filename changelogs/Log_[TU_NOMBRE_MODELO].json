@@ -1,8 +1,20 @@
 {
-  "fecha": "YYYY-MM-DD",
-  "modelo": "Nombre del Modelo",
-  "cambio": "Descripción breve del cambio realizado",
-  "resultado_prueba": "PASSED / FAILED",
-  "intentos_realizados": "x",
-  "notas": "Breve explicación del resultado de tu prueba"
+  "id_registro": "LOG-2026-0714-SYS",
+  "fecha": "2026-07-14",
+  "modelo": "[TU_NOMBRE_MODELO]",
+  "objetivo_tarea": "Escaneo, mapeo de variables y refactorización Clean Code del sistema.",
+  "estado_actual": "Completado y Operativo",
+  "componentes_afectados": [
+    "Backend (FastAPI - main.py / routers)",
+    "Modelos y Repositorios (Pydantic / Supabase)"
+  ],
+  "pasos_realizados": [
+    "1. Escaneo de la estructura de archivos y directorios del proyecto.",
+    "2. Mapeo y ajuste de nombres de variables para alinear con Supabase (deuda_del_cliente).",
+    "3. Aplicación de directrices CORS para evitar bloqueos locales.",
+    "4. Refactorización de la lógica aplicando principios de Clean Code."
+  ],
+  "resultado_prueba": "PASSED",
+  "intentos_realizados": "1",
+  "notas": "Proyecto sincronizado con la base de datos y refactorizado bajo Clean Code."
 }

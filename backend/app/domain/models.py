@@ -9,9 +9,9 @@ from pydantic import BaseModel, Field
 # ==========================================
 
 class ClienteBase(BaseModel):
-    NameCliente: str = Field(..., description="Name of the client")
-    Deuda_del_cliente: Decimal = Field(default=Decimal("0.00"), description="Total outstanding debt of the client")
-    Estado: int = Field(default=1, description="Status of the client (e.g. 1 = Active, 0 = Inactive)")
+    namecliente: str = Field(..., description="Name of the client")
+    deuda_del_cliente: Decimal = Field(default=Decimal("0.00"), description="Total outstanding debt of the client")
+    estado: int = Field(default=1, description="Status of the client (e.g. 1 = Active, 0 = Inactive)")
 
 
 class ClienteCreate(ClienteBase):
@@ -19,9 +19,9 @@ class ClienteCreate(ClienteBase):
 
 
 class ClienteUpdate(BaseModel):
-    NameCliente: Optional[str] = None
-    Deuda_del_cliente: Optional[Decimal] = None
-    Estado: Optional[int] = None
+    namecliente: Optional[str] = None
+    deuda_del_cliente: Optional[Decimal] = None
+    estado: Optional[int] = None
 
 
 class AbonoRequest(BaseModel):
@@ -41,9 +41,9 @@ class Cliente(ClienteBase):
 # ==========================================
 
 class ProductoBase(BaseModel):
-    NombreProducto: str = Field(..., description="Name of the product")
-    ValorDeCompra: Decimal = Field(..., description="Acquisition/purchase cost of the product")
-    ValorDeVenta: Decimal = Field(..., description="Wholesale/retail selling price")
+    nombreproducto: str = Field(..., description="Name of the product")
+    valordecompra: Decimal = Field(..., description="Acquisition/purchase cost of the product")
+    valordeventa: Decimal = Field(..., description="Wholesale/retail selling price")
 
 
 class ProductoCreate(ProductoBase):
@@ -51,9 +51,9 @@ class ProductoCreate(ProductoBase):
 
 
 class ProductoUpdate(BaseModel):
-    NombreProducto: Optional[str] = None
-    ValorDeCompra: Optional[Decimal] = None
-    ValorDeVenta: Optional[Decimal] = None
+    nombreproducto: Optional[str] = None
+    valordecompra: Optional[Decimal] = None
+    valordeventa: Optional[Decimal] = None
 
 
 class Producto(ProductoBase):
@@ -69,9 +69,9 @@ class Producto(ProductoBase):
 # ==========================================
 
 class PedidoBase(BaseModel):
-    IDcliente: int = Field(..., description="Foreign key to the cliente who placed the order")
-    EstadoPedido: str = Field(..., description="Current status of the order (e.g. Pendiente, Entregado, Pagado)")
-    Fecha_pedido: date = Field(..., description="Date when the order was placed")
+    idcliente: int = Field(..., description="Foreign key to the cliente who placed the order")
+    estadopedido: str = Field(..., description="Current status of the order (e.g. Pendiente, Entregado, Pagado)")
+    fecha_pedido: date = Field(..., description="Date when the order was placed")
 
 
 class PedidoCreate(PedidoBase):
@@ -79,9 +79,9 @@ class PedidoCreate(PedidoBase):
 
 
 class PedidoUpdate(BaseModel):
-    IDcliente: Optional[int] = None
-    EstadoPedido: Optional[str] = None
-    Fecha_pedido: Optional[date] = None
+    idcliente: Optional[int] = None
+    estadopedido: Optional[str] = None
+    fecha_pedido: Optional[date] = None
 
 
 class Pedido(PedidoBase):
@@ -99,7 +99,7 @@ class Pedido(PedidoBase):
 class DetallesPedidoBase(BaseModel):
     id_pedido: int = Field(..., description="Foreign key reference to the parent Pedido")
     id_producto: int = Field(..., description="Foreign key reference to the product")
-    Valor_del_Pedido: Decimal = Field(..., description="Subtotal price for this detail line")
+    valor_del_pedido: Decimal = Field(..., description="Subtotal price for this detail line")
     cantidad_producto: Decimal = Field(..., description="Quantity of product ordered (can be fractional for meat weight)")
 
 
@@ -110,12 +110,12 @@ class DetallesPedidoCreate(DetallesPedidoBase):
 class DetallesPedidoUpdate(BaseModel):
     id_pedido: Optional[int] = None
     id_producto: Optional[int] = None
-    Valor_del_Pedido: Optional[Decimal] = None
+    valor_del_pedido: Optional[Decimal] = None
     cantidad_producto: Optional[Decimal] = None
 
 
 class DetallesPedido(DetallesPedidoBase):
-    id: int
+    id: Optional[int] = None
 
     model_config = {
         "from_attributes": True
@@ -141,16 +141,14 @@ class PaginatedClientes(BaseModel):
 class OrderItemCreate(BaseModel):
     id_producto: int = Field(..., description="ID of the product being ordered")
     cantidad_producto: Decimal = Field(..., description="Weight / quantity of the product")
-    Valor_del_Pedido: Decimal = Field(..., description="Price for this line item (quantity * sale price)")
+    valor_del_pedido: Decimal = Field(..., description="Price for this line item (quantity * sale price)")
 
 
 class OrderCreateRequest(BaseModel):
-    IDcliente: int = Field(..., description="ID of the customer placing the order")
+    idcliente: int = Field(..., description="ID of the customer placing the order")
     items: List[OrderItemCreate] = Field(..., description="List of products ordered")
 
 
 class OrderCreateResponse(BaseModel):
     pedido: Pedido = Field(..., description="Main order header details")
     items: List[DetallesPedido] = Field(..., description="List of recorded detail line items")
-
-

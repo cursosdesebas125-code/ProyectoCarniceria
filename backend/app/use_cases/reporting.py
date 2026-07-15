@@ -25,7 +25,7 @@ class GetClientStatementUseCase:
     async def execute(self, cliente_id: int) -> List[Dict[str, Any]]:
         # Fetch all orders
         all_orders = await self.pedidos_repo.list_all(limit=1000)
-        client_orders = [o for o in all_orders if o.IDcliente == cliente_id]
+        client_orders = [o for o in all_orders if o.idcliente == cliente_id]
         
         statement_records = []
         today = datetime.date.today()
@@ -33,22 +33,22 @@ class GetClientStatementUseCase:
         for order in client_orders:
             # Fetch line items for this order
             details = await self.detalles_repo.list_by_pedido_id(order.id)
-            order_total = sum(float(d.Valor_del_Pedido) for d in details)
+            order_total = sum(float(d.valor_del_pedido) for d in details)
 
-            # Rule 2: Overdue term is exactly 15 days from Fecha_pedido
+            # Rule 2: Overdue term is exactly 15 days from fecha_pedido
             is_overdue = False
-            if order.EstadoPedido != "Pagado":
-                days_elapsed = (today - order.Fecha_pedido).days
+            if order.estadopedido != "Pagado":
+                days_elapsed = (today - order.fecha_pedido).days
                 if days_elapsed > 15:
                     is_overdue = True
 
             statement_records.append({
                 "order_id": order.id,
-                "fecha_pedido": order.Fecha_pedido.isoformat(),
-                "estado": order.EstadoPedido,
+                "fecha_pedido": order.fecha_pedido.isoformat(),
+                "estado": order.estadopedido,
                 "total": order_total,
                 "overdue": is_overdue,
-                "days_since_created": (today - order.Fecha_pedido).days
+                "days_since_created": (today - order.fecha_pedido).days
             })
 
         # Sort statement by date descending
@@ -76,7 +76,7 @@ class GetFinancialsUseCase:
     async def execute(self) -> Dict[str, Any]:
         # 1. Total Outstanding Debt
         clients = await self.clientes_repo.list_all(limit=1000)
-        total_outstanding = sum(float(c.Deuda_del_cliente) for c in clients)
+        total_outstanding = sum(float(c.deuda_del_cliente) for c in clients)
 
         # 2. Orders Aggregation
         orders = await self.pedidos_repo.list_all(limit=1000)
@@ -88,13 +88,13 @@ class GetFinancialsUseCase:
         for order in orders:
             # Fetch details for the order to sum its actual registered value
             details = await self.detalles_repo.list_by_pedido_id(order.id)
-            order_total = sum(float(d.Valor_del_Pedido) for d in details)
+            order_total = sum(float(d.valor_del_pedido) for d in details)
 
-            if order.EstadoPedido == "Pagado":
+            if order.estadopedido == "Pagado":
                 total_collected += order_total
             else:
                 # Unpaid orders older than 15 days are overdue
-                days_elapsed = (today - order.Fecha_pedido).days
+                days_elapsed = (today - order.fecha_pedido).days
                 if days_elapsed > 15:
                     total_overdue += order_total
 
@@ -126,7 +126,7 @@ class GetEarningsUseCase:
         # Filter orders in timeframe
         filtered_orders = [
             o for o in orders 
-            if start_date <= o.Fecha_pedido <= end_date
+            if start_date <= o.fecha_pedido <= end_date
         ]
 
         total_sales = 0.0
@@ -139,14 +139,14 @@ class GetEarningsUseCase:
             details = await self.detalles_repo.list_by_pedido_id(order.id)
             
             for detail in details:
-                total_sales += float(detail.Valor_del_Pedido)
+                total_sales += float(detail.valor_del_pedido)
                 
                 # Fetch product details
                 prod_id = detail.id_producto
                 if prod_id not in products_cache:
                     prod = await self.productos_repo.get_by_id(prod_id)
                     if prod:
-                        products_cache[prod_id] = float(prod.ValorDeCompra)
+                        products_cache[prod_id] = float(prod.valordecompra)
                     else:
                         products_cache[prod_id] = 0.0
                 

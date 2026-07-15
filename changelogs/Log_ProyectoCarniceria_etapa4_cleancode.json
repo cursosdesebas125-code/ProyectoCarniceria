@@ -1,0 +1,15 @@
+{
+  "id_registro": "LOG-2026-0714-S04",
+  "fecha": "2026-07-14",
+  "modelo": "ProyectoCarniceria",
+  "objetivo_tarea": "Refactorización de componentes bajo principios Clean Code.",
+  "estado_actual": "Completado",
+  "componentes_afectados": ["Controladores", "Repositorios", "Servicios"],
+  "pasos_realizados": [
+    "1. Aplicación del principio de responsabilidad única en servicios.",
+    "2. Limpieza y estandarización del endpoint de clientes."
+  ],
+  "resultado_prueba": "PASSED",
+  "intentos_realizados": "1",
+  "notas": "Código refactorizado y optimizado bajo los estándares de Clean Code."
+}

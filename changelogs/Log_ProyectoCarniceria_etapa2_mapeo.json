@@ -1,0 +1,16 @@
+{
+  "id_registro": "LOG-2026-0714-S02",
+  "fecha": "2026-07-14",
+  "modelo": "ProyectoCarniceria",
+  "objetivo_tarea": "Mapeo de variables, desajustes de Supabase y actualización de README.",
+  "estado_actual": "Completado",
+  "componentes_afectados": ["Modelos Pydantic", "Repositorios de datos", "README.md"],
+  "pasos_realizados": [
+    "1. Detección de discrepancias en nombres de columnas (deuda_del_cliente).",
+    "2. Ajuste de los payloads para coincidir con la base de datos.",
+    "3. Actualización de la documentación técnica y mapeo en el archivo README.md."
+  ],
+  "resultado_prueba": "PASSED",
+  "intentos_realizados": "1",
+  "notas": "Se corrigieron los desajustes de nomenclatura del esquema y se volcó la nueva estructura en el README."
+}

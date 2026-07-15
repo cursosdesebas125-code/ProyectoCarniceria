@@ -1,0 +1,15 @@
+{
+  "id_registro": "LOG-2026-0714-S06",
+  "fecha": "2026-07-14",
+  "modelo": "ProyectoCarniceria",
+  "objetivo_tarea": "Actualización de la documentación en README.md.",
+  "estado_actual": "Completado",
+  "componentes_afectados": ["README.md"],
+  "pasos_realizados": [
+    "1. Revisión de los cambios estructurales y de esquema aplicados.",
+    "2. Actualización de la documentación técnica en el README.md."
+  ],
+  "resultado_prueba": "PASSED",
+  "intentos_realizados": "1",
+  "notas": "Documentación actualizada de acuerdo con la nueva estructura y mapeo de Supabase."
+}

@@ -33,10 +33,10 @@ class CreateOrderUseCase:
     async def execute(self, request: OrderCreateRequest) -> OrderCreateResponse:
         # Rule 2: Capture server's current date automatically inside the domain use case
         fecha_pedido = datetime.date.today()
-        grand_total = sum(item.Valor_del_Pedido for item in request.items)
+        grand_total = sum(item.valor_del_pedido for item in request.items)
 
         logger.info(
-            f"Initiating order creation for customer {request.IDcliente}. "
+            f"Initiating order creation for customer {request.idcliente}. "
             f"Items count: {len(request.items)}. Total: ${grand_total}"
         )
 
@@ -48,26 +48,26 @@ class CreateOrderUseCase:
 
         try:
             # 1. Fetch customer and check current outstanding balance
-            cliente = await self.clientes_repo.get_by_id(request.IDcliente)
+            cliente = await self.clientes_repo.get_by_id(request.idcliente)
             if not cliente:
-                raise ValueError(f"Customer with ID {request.IDcliente} does not exist.")
-            original_debt = cliente.Deuda_del_cliente
+                raise ValueError(f"Customer with ID {request.idcliente} does not exist.")
+            original_debt = cliente.deuda_del_cliente
 
             # 2. Insert main order header (initial status: Pendiente)
             pedido_payload = PedidoCreate(
-                IDcliente=request.IDcliente,
-                EstadoPedido="Pendiente",
-                Fecha_pedido=fecha_pedido
+                idcliente=request.idcliente,
+                estadopedido="Pendiente",
+                fecha_pedido=fecha_pedido
             )
             created_pedido = await self.pedidos_repo.create(pedido_payload)
             logger.info(f"Order header created successfully. ID: {created_pedido.id}")
 
-            # 3. Bulk insert details into Detalles_Pedido junction table
+            # 3. Bulk insert details into detalles_pedido junction table
             for item in request.items:
                 detalle_payload = DetallesPedidoCreate(
                     id_pedido=created_pedido.id,
                     id_producto=item.id_producto,
-                    Valor_del_Pedido=item.Valor_del_Pedido,
+                    valor_del_pedido=item.valor_del_pedido,
                     cantidad_producto=item.cantidad_producto
                 )
                 inserted_detail = await self.detalles_repo.create(detalle_payload)
@@ -77,11 +77,11 @@ class CreateOrderUseCase:
             # 4. Update customer outstanding balance adding order total
             new_debt = original_debt + grand_total
             await self.clientes_repo.update(
-                entity_id=request.IDcliente,
-                schema=ClienteUpdate(Deuda_del_cliente=new_debt)
+                entity_id=request.idcliente,
+                schema=ClienteUpdate(deuda_del_cliente=new_debt)
             )
             debt_updated = True
-            logger.info(f"Updated customer {request.IDcliente} debt from ${original_debt} to ${new_debt}.")
+            logger.info(f"Updated customer {request.idcliente} debt from ${original_debt} to ${new_debt}.")
 
             return OrderCreateResponse(
                 pedido=created_pedido,
@@ -90,7 +90,7 @@ class CreateOrderUseCase:
 
         except Exception as err:
             logger.error(f"Order creation failed. Triggering compensatory rollback actions. Error: {str(err)}")
-            await self._rollback(created_pedido, created_details, original_debt, debt_updated, request.IDcliente)
+            await self._rollback(created_pedido, created_details, original_debt, debt_updated, request.idcliente)
             raise RuntimeError(f"Database transaction failed. All steps rolled back successfully. Reason: {str(err)}")
 
     async def _rollback(
@@ -109,7 +109,7 @@ class CreateOrderUseCase:
             try:
                 await self.clientes_repo.update(
                     entity_id=cliente_id,
-                    schema=ClienteUpdate(Deuda_del_cliente=original_debt)
+                    schema=ClienteUpdate(deuda_del_cliente=original_debt)
                 )
                 logger.info(f"Rollback: Reverted client {cliente_id} debt to ${original_debt}")
             except Exception as e:

@@ -77,7 +77,7 @@ class AppController {
 
   private initEvents(): void {
     // Navigation Action Toggles
-    const toggleView = (view: 'window1' | 'window2' | 'window3') => {
+    const toggleView = async (view: 'window1' | 'window2' | 'window3') => {
       this.hideAllViews();
       if (view === 'window1') {
         this.viewWindow1.style.display = 'grid';
@@ -86,17 +86,17 @@ class AppController {
       } else if (view === 'window2') {
         this.viewWindow2.style.display = 'grid';
         this.tabBtnPos.classList.add('active');
-        this.loadPOSSelectorsData();
+        await this.loadPOSSelectorsData();
       } else {
         this.viewWindow3.style.display = 'block';
         this.tabBtnReports.classList.add('active');
-        this.initReportsView();
+        await this.initReportsView();
       }
     };
 
-    this.tabBtnOverview.addEventListener('click', () => toggleView('window1'));
-    this.tabBtnPos.addEventListener('click', () => toggleView('window2'));
-    this.tabBtnReports.addEventListener('click', () => toggleView('window3'));
+    this.tabBtnOverview.addEventListener('click', () => { toggleView('window1'); });
+    this.tabBtnPos.addEventListener('click', () => { toggleView('window2'); });
+    this.tabBtnReports.addEventListener('click', () => { toggleView('window3'); });
 
     // Window 1: Inner Sub-View Tab Switchers
     this.w1TabClient.addEventListener('click', () => this.switchW1Tab('client'));
@@ -138,7 +138,7 @@ class AppController {
         const clientRes = await api.clientes.list(1, 1000);
         const clienteFrescesco = clientRes.items.find(c => c.id === clientId);
         if (clienteFrescesco) {
-          console.log(`--> [POS FRESCO] Datos actualizados para: ${clienteFrescesco.NameCliente}, Deuda: $${clienteFrescesco.Deuda_del_cliente}`);
+          console.log(`--> [POS FRESCO] Datos actualizados para: ${clienteFrescesco.namecliente}, Deuda: $${clienteFrescesco.deuda_del_cliente}`);
           this.posSelectedClientData = clienteFrescesco;
         }
       } catch (err) {
@@ -258,12 +258,10 @@ class AppController {
       row.className = 'fade-in';
 
       row.innerHTML = `
-        <td><strong>${c.NameCliente}</strong></td>
-        <td style="color: var(--accent-meat); font-weight: 700;">$${Number(c.Deuda_del_cliente).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+        <td><strong>${c.namecliente}</strong></td>
+        <td style="color: var(--accent-meat); font-weight: 700;">$${Number(c.deuda_del_cliente).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
         <td>
-          <span class="badge ${c.Estado === 1 ? 'active' : 'inactive'}">
-            ${c.Estado === 1 ? 'Activo' : 'Desactivado'}
-          </span>
+          <span class="badge ${c.estado === 0 ? 'active' : 'inactive'}">${c.estado === 0 ? 'al día' : 'debe'}</span>
         </td>
         <td>
           <div style="display: flex; gap: 8px;">
@@ -271,9 +269,6 @@ class AppController {
               💸 Abonar
             </button>
             <button class="btn btn-secondary btn-editar" style="padding: 6px 12px; font-size: 0.8rem;">Editar</button>
-            <button class="btn btn-status" style="padding: 6px 12px; font-size: 0.8rem; background-color: ${c.Estado === 1 ? 'rgba(192, 57, 43, 0.1)' : 'rgba(39, 174, 96, 0.1)'}; color: ${c.Estado === 1 ? 'var(--accent-meat)' : 'var(--accent-success)'};">
-              ${c.Estado === 1 ? 'Desactivar' : 'Activar'}
-            </button>
           </div>
         </td>
       `;
@@ -281,21 +276,14 @@ class AppController {
       const btnAbonar = row.querySelector('.btn-abonar') as HTMLButtonElement;
       btnAbonar.addEventListener('click', () => {
         if (typeof (window as any).registrarAbonoCliente === 'function') {
-          (window as any).registrarAbonoCliente(c.id, c.NameCliente, c.Deuda_del_cliente);
+          (window as any).registrarAbonoCliente(c.id, c.namecliente, c.deuda_del_cliente);
         }
       });
 
       const btnEditar = row.querySelector('.btn-editar') as HTMLButtonElement;
       btnEditar.addEventListener('click', () => {
         if (typeof (window as any).editClientName === 'function') {
-          (window as any).editClientName(c.id, c.NameCliente);
-        }
-      });
-
-      const btnStatus = row.querySelector('.btn-status') as HTMLButtonElement;
-      btnStatus.addEventListener('click', () => {
-        if (typeof (window as any).toggleClientStatus === 'function') {
-          (window as any).toggleClientStatus(c.id, c.Estado);
+          (window as any).editClientName(c.id, c.namecliente);
         }
       });
 
@@ -313,7 +301,11 @@ class AppController {
 
     if (!name) return;
 
-    const payload = { NameCliente: name, Deuda_del_cliente: 0, Estado: 1 };
+    const payload: import('./types').ClienteCreate = {
+      namecliente: name,
+      deuda_del_cliente: 0,
+      estado: 1,
+    };
 
     try {
       await api.clientes.create(payload);
@@ -360,7 +352,7 @@ class AppController {
       return;
     }
 
-    const payload = { NombreProducto: name, ValorDeCompra: cost, ValorDeVenta: sale };
+    const payload = { nombreproducto: name, valordecompra: cost, valordeventa: sale };
 
     try {
       await api.productos.create(payload);
@@ -403,6 +395,7 @@ class AppController {
         if (!value || !value.trim()) {
           return '¡El nombre no puede estar vacío!';
         }
+        return undefined;
       }
     });
 
@@ -410,7 +403,7 @@ class AppController {
     const trimmed = newName.trim();
 
     try {
-      await api.clientes.update(id, { NameCliente: trimmed });
+      await api.clientes.update(id, { namecliente: trimmed });
       
       Swal.fire({
         title: '¡Modificado!',
@@ -437,7 +430,7 @@ class AppController {
     const accionText = nextStatus === 1 ? 'activar' : 'desactivar';
 
     try {
-      await api.clientes.update(id, { Estado: nextStatus });
+      await api.clientes.update(id, { estado: nextStatus });
       
       Swal.fire({
         title: `Cliente ${nextStatus === 1 ? 'Activado' : 'Desactivado'}`,
@@ -471,9 +464,9 @@ class AppController {
 
       this.w1ProductTableBody.innerHTML = products.map(p => `
         <tr class="fade-in">
-          <td><strong>${p.NombreProducto}</strong></td>
-          <td>$${Number(p.ValorDeCompra).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-          <td style="color: var(--accent-success); font-weight: 700;">$${Number(p.ValorDeVenta).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+          <td><strong>${p.nombreproducto}</strong></td>
+          <td>$${Number(p.valordecompra).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+          <td style="color: var(--accent-success); font-weight: 700;">$${Number(p.valordeventa).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
           <td>
             <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; background-color: rgba(192, 57, 43, 0.1); color: var(--accent-meat);" onclick="window.removeProduct(${p.id})">Remover</button>
           </td>
@@ -536,14 +529,13 @@ class AppController {
 
     try {
       const clientRes = await api.clientes.list(1, 1000);
-      const activeClients = clientRes.items.filter(c => c.Estado === 1);
       this.posAvailableProducts = await api.productos.list(1000);
 
-      if (activeClients.length === 0) {
-        this.posSelectCliente.innerHTML = '<option value="">No hay clientes activos</option>';
+      if (clientRes.items.length === 0) {
+        this.posSelectCliente.innerHTML = '<option value="">No hay clientes disponibles</option>';
       } else {
         this.posSelectCliente.innerHTML = '<option value="">Seleccione cliente...</option>' + 
-          activeClients.map(c => `<option value="${c.id}">${c.NameCliente}</option>`).join('');
+          clientRes.items.map(c => `<option value="${c.id}">${c.namecliente}</option>`).join('');
       }
 
       this.posRowsContainer.innerHTML = '';
@@ -571,7 +563,7 @@ class AppController {
         <option value="">Seleccione producto...</option>
         ${this.posAvailableProducts.map(p => `
           <option value="${p.id}">
-            ${p.NombreProducto} ($${Number(p.ValorDeVenta).toFixed(2)}/kg)
+            ${p.nombreproducto} ($${Number(p.valordeventa).toFixed(2)}/kg)
           </option>
         `).join('')}
       </select>
@@ -593,7 +585,7 @@ class AppController {
 
       const product = this.posAvailableProducts.find(p => p.id === prodId);
       if (product && qty > 0) {
-        const rate = Number(product.ValorDeVenta);
+        const rate = Number(product.valordeventa);
         subtotalSpan.innerText = `$${(qty * rate).toFixed(2)}`;
       } else {
         subtotalSpan.innerText = '$0.00';
@@ -632,7 +624,7 @@ class AppController {
       } else {
         const product = this.posAvailableProducts.find(p => p.id === prodId);
         if (product) {
-          grandTotal += qty * Number(product.ValorDeVenta);
+          grandTotal += qty * Number(product.valordeventa);
         }
       }
     });
@@ -667,10 +659,10 @@ class AppController {
         const clienteActual = this.posSelectedClientData;
         console.log("CLIENTE SELECCIONADO (Fresco):", clienteActual);
 
-        if (clienteActual && Number(clienteActual.Estado) === 1 && Number(clienteActual.Deuda_del_cliente) > 0) {
+        if (clienteActual && Number(clienteActual.estado) === 1 && Number(clienteActual.deuda_del_cliente) > 0) {
           const confirmacionDeuda = await Swal.fire({
             title: '¡Atención: El cliente debe!',
-            text: `Este cliente tiene un saldo pendiente de $${clienteActual.Deuda_del_cliente}. ¿Estás seguro de que quieres crear el pedido?`,
+            text: `Este cliente tiene un saldo pendiente de $${clienteActual.deuda_del_cliente}. ¿Estás seguro de que quieres crear el pedido?`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#2e7d32',
@@ -698,7 +690,7 @@ class AppController {
         return;
       }
 
-      const items: { id_producto: number; cantidad_producto: number; Valor_del_Pedido: number }[] = [];
+      const items: { id_producto: number; cantidad_producto: number; valor_del_pedido: number }[] = [];
       const seenProductIds = new Set<number>();
       let validationError = '';
 
@@ -726,7 +718,7 @@ class AppController {
           items.push({
             id_producto: prodId,
             cantidad_producto: qty,
-            Valor_del_Pedido: qty * Number(product.ValorDeVenta)
+            valor_del_pedido: qty * Number(product.valordeventa)
           });
         }
       });
@@ -742,7 +734,7 @@ class AppController {
       }
 
       const payload: OrderCreateRequest = {
-        IDcliente: clientId,
+        idcliente: clientId,
         items: items
       };
 
@@ -817,7 +809,7 @@ class AppController {
         this.reportsSelectCliente.innerHTML = '<option value="">No hay clientes registrados</option>';
       } else {
         this.reportsSelectCliente.innerHTML = '<option value="">Seleccione cliente...</option>' + 
-          allClients.map(c => `<option value="${c.id}">${c.NameCliente}</option>`).join('');
+          allClients.map(c => `<option value="${c.id}">${c.namecliente}</option>`).join('');
       }
     } catch (err) {
       console.error('Error loading reports select client dropdown:', err);
@@ -844,7 +836,7 @@ class AppController {
     }
   }
 
-  private populateReportsStatementTable(records: any[]): void {
+  private populateReportsStatementTable(records: import('./types').ClienteStatement[]): void {
     if (records.length === 0) {
       this.reportsStatementBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">El cliente seleccionado no registra pedidos.</td></tr>`;
       return;
@@ -957,6 +949,9 @@ document.addEventListener('DOMContentLoaded', () => {
       title: `Abonar a ${nombreCliente}`,
       html: `Deuda actual: <strong>$${Number(deudaActual).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong><br><br>Ingrese el monto que va a abonar:`,
       input: 'number',
+      inputAttributes: {
+        step: "1000"
+      },
       inputPlaceholder: `Máximo: $${deudaActual}`,
       inputValue: '',
       showCancelButton: true,
@@ -972,6 +967,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (parsed > deudaActual) {
           return `El monto no puede superar la deuda actual ($${deudaActual}).`;
         }
+        return undefined;
       }
     });
 
@@ -981,52 +977,39 @@ document.addEventListener('DOMContentLoaded', () => {
     const monto = parseFloat(valorIngresado);
 
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/clientes/${clienteId}/abonar`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ monto: monto })
-      });
-
-      if (response.ok) {
-        const resultado = await response.json();
+      const resultado = await api.clientes.abonar(clienteId, { monto });
         
         // ✨ VENTANA DE ÉXITO PREMIUM
         Swal.fire({
           title: '¡Abono Registrado!',
-          text: `Nueva deuda de ${nombreCliente}: $${Number(resultado.nueva_deuda).toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
+          html: `Nueva deuda de ${nombreCliente}: <strong>$${Number(resultado.nueva_deuda).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong><br><br>
+                 <span style="font-size: 0.9rem; color: var(--text-muted);">
+                 Órdenes afectadas: ${resultado.ordenes_afectadas.map(o =>
+                   `#${o.id}: ${o.estado_anterior} → ${o.estado_nuevo}`
+                 ).join(', ')}</span>`,
           icon: 'success',
           confirmButtonColor: '#2e7d32',
           confirmButtonText: 'Excelente'
         });
         
         if (appControllerInstance) {
+          // 1️⃣ Refrescar tabla de clientes (Window 1)
           await appControllerInstance.renderW1Table();
+          
+          // 2️⃣ Refrescar estado de cuenta en Reports si el mismo cliente está seleccionado
+          const reportsSelect = appControllerInstance['reportsSelectCliente'] as HTMLSelectElement;
+          if (reportsSelect && parseInt(reportsSelect.value) === clienteId) {
+            await appControllerInstance['handleReportsLoadStatement']();
+          }
         }
-      } else {
-        // ⚠️ Mostrar el mensaje de error real devuelto por el servidor
-        let errorMsg = 'No se pudo aplicar el abono.';
-        try {
-          const errBody = await response.json();
-          if (errBody?.detail) errorMsg = errBody.detail;
-        } catch (_) {}
-        Swal.fire({
-          title: 'Error al procesar',
-          text: errorMsg,
-          icon: 'warning',
-          confirmButtonColor: '#dd2c00',
-          confirmButtonText: 'Revisar'
-        });
-      }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error al registrar abono:", error);
-      
-      // ❌ ALERTA DE ERROR DE CONEXIÓN
       Swal.fire({
-        title: 'Fallo de Conexión',
-        text: 'No se pudo establecer comunicación con el backend.',
-        icon: 'error',
-        confirmButtonColor: '#c62828',
-        confirmButtonText: 'Cerrar'
+        title: 'Error al procesar',
+        text: error.message || 'No se pudo aplicar el abono.',
+        icon: 'warning',
+        confirmButtonColor: '#dd2c00',
+        confirmButtonText: 'Revisar'
       });
     }
   };
